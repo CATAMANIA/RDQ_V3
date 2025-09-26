@@ -1,0 +1,406 @@
+Hybridation SFD et Cahier des charges
+
+1. Contexte et objectifs (vision métier)
+1.1. But du projet 
+L’objectif principal du projet est de créer une application appelée RDQ (ou RQD dans certains passages), destinée à centraliser toutes les informations et fonctionnalités nécessaires à la préparation des entretiens commerciaux. Aujourd’hui, les commerciaux utilisent soit un CRM, soit les e-mails, sans processus commun clairement défini. 
+L’application vise donc à :
+* Centraliser les informations clés pour chaque RDQ (CV, fiche de poste, coordonnées, date/heure, lieu physique ou visio, etc.).
+* Faciliter la préparation des entretiens pour les collaborateurs et les managers, en permettant l’accès rapide à tous les documents et informations nécessaires.
+* Fluidifier les interactions entre managers et collaborateurs (messagerie, appels, agenda, GPS pour se rendre au RDV).
+* Automatiser à terme la synchronisation des informations entre le CRM, l’application RDQ et le calendrier Outlook du collaborateur.
+L’application prévoit deux profils principaux :
+* Le manager : crée, attribue et met à jour les RDQ, alimente l’application en documents, et peut suivre l’historique et le bilan des entretiens.
+* Le collaborateur : consulte les RDQ qui lui sont attribués, accède aux détails, prépare ses entretiens, et saisit son bilan après le RDQ.
+L’objectif final est donc de professionnaliser, structurer et automatiser la gestion des rendez-vous commerciaux pour gagner en efficacité, en traçabilité et en qualité de suivi.
+1.2. Utilisateurs cibles
+L’application RDQ s’adresse à deux profils principaux?:
+* Le manager?: 
+o Rôle?: administrateur de l’application, responsable de la création, de l’attribution et de la mise à jour des RDQ.
+o Actions?: alimente l’application en documents (CV, fiche de poste…), attribue les RDQ aux collaborateurs, suit l’historique et les bilans, clôture ou rouvre les RDQ.
+* Le collaborateur?: 
+o Rôle?: utilisateur en consultation, destinataire des RDQ créés par les managers.
+o Actions?: consulte les RDQ qui lui sont attribués, accède aux détails, prépare ses entretiens, saisit son bilan après le RDQ, peut interagir avec le manager ou le commercial via les outils intégrés (mail, appel, agenda, GPS)
+
+1.3. Périmètre 
+Fonctionnalités incluses
+* Centralisation des informations RDQ?: accès à tous les éléments nécessaires à la préparation d’un entretien (CV, fiche de poste, coordonnées, date/heure, lieu…).
+* Gestion des rôles?: authentification différenciée manager/collaborateur.
+* Création, modification et attribution des RDQ (par le manager).
+* Ajout de pièces jointes (CV, fiche de poste, autres documents).
+* Débranchement rapide?: 
+o Vers Google Maps (adresse du RDQ)
+o Vers la fonction appel (numéros du manager, client, commercial…)
+o Vers les e-mails (pour interagir avec le commercial)
+o Vers l’agenda Outlook (création automatique d’événements)
+* Historique des RDQ?: consultation des RDQ passés, gestion des bilans (note et commentaire du manager et du collaborateur), clôture et réouverture des RDQ.
+* Gestion des erreurs et anomalies?: codes d’erreur explicites (401, 404, 403, 500) et gestion des cas de non-conformité. 
+Fonctionnalités exclues ou limitées
+* Modification d’un RDQ clos?: une fois clôturé, le RDQ n’est plus modifiable (sauf ajout de pièces jointes, mais ce n’est pas un besoin métier identifié).
+* Affichage par défaut?: les RDQ clos ne sont plus visibles dans la liste principale, il faut cocher “Afficher l’historique” pour les consulter.
+* Gestion avancée des droits?: seuls les deux profils principaux sont prévus (pas de profils intermédiaires ou personnalisés).
+* Pas de processus métier pour l’ajout de PJ après clôture (fonctionnalité possible techniquement mais non souhaitée par le métier).
+
+2. 2. Fonctionnalités
+Chaque fonctionnalité est décrite de façon structurée, par bloc exploitable :
+2.1. Création d’un RDQ
+* Description :
+Permet au manager de créer un nouveau RDQ, de le renseigner (titre, client, collaborateur, date, etc.), d’y joindre des documents (CV, fiche de poste…) et de l’attribuer à un collaborateur.
+* Entrées attendues :
+o Titre du RDQ
+o Manager (sélectionné automatiquement ou manuellement)
+o Collaborateur (choix dans la liste)
+o Client
+o Contact client
+o Projet
+o Date et heure du RDQ
+o Adresse client
+o Indications manager
+o Pièces jointes (CV, fiche de poste…)
+* Sorties attendues :
+o RDQ créé et visible dans la liste des RDQ du manager et du collaborateur concerné
+o Documents associés accessibles
+o RDQ ajouté à l’agenda Outlook du collaborateur (si synchronisation activée)
+* Règles de gestion :
+o Un RDQ ne peut être créé que par un manager authentifié
+o Les champs obligatoires doivent être renseignés
+o Un RDQ peut être attribué à tout collaborateur, même hors portefeuille du manager
+o Possibilité de modifier un RDQ tant qu’il n’est pas clos
+* Interfaces :
+o Écran de création/modification de RDQ
+o API pour synchronisation avec CRM et Outlook
+o Boutons pour joindre des fichiers
+* Exceptions / erreurs :
+o Erreur 401 si l’utilisateur n’est pas authentifié
+o Erreur 403 si non-conformité sur les données saisies
+o Erreur 404 si le collaborateur ou le client n’existe pas
+o Erreur 500 si problème technique lors de la sauvegarde
+* Critères d’acceptation (exemple Gherkin) :
+o Given un manager authentifié
+o When il renseigne tous les champs obligatoires et valide
+o Then le RDQ apparaît dans la liste des RDQ du collaborateur et du manager
+o And les pièces jointes sont accessibles
+o And une invitation est envoyée dans l’agenda Outlook si demandé
+
+2.2. Consultation et préparation d’un RDQ (collaborateur)
+* Description :
+Permet au collaborateur de consulter les RDQ qui lui sont attribués, d’accéder aux détails (projet, client, date, documents…), de préparer l’entretien et de saisir son bilan après le RDQ. 
+* Entrées attendues :
+o Sélection d’un RDQ dans la liste
+o Consultation des documents joints
+o Saisie du bilan (note, commentaire)
+* Sorties attendues :
+o Affichage des détails du RDQ
+o Accès aux documents
+o Bilan enregistré et visible par le manager
+* Règles de gestion :
+o Un collaborateur ne voit que les RDQ qui lui sont attribués
+o Un RDQ clos n’est plus modifiable (hors PJ si besoin technique)
+o Le bilan ne peut être saisi qu’après la date du RDQ
+* Interfaces :
+o Liste des RDQ (par défaut, non clos)
+o Détail d’un RDQ
+o Boutons d’accès rapide (mail, appel, GPS, agenda, bilan, enquête)
+* Exceptions / erreurs :
+o Erreur 404 si le RDQ n’existe plus
+o Erreur 403 si tentative de modification d’un RDQ clos
+o Affichage d’une bulle rouge si le bilan n’est pas saisi
+* Critères d’acceptation :
+o Given un collaborateur connecté
+o When il sélectionne un RDQ
+o Then il accède à tous les détails et documents
+o And il peut saisir son bilan après la date du RDQ
+o And le manager voit le bilan saisi
+
+2.3. Débranchement vers outils externes (Mail, Appel, GPS, Agenda)
+* Description :
+Permet d’accéder rapidement à des actions externes?: envoyer un mail, appeler un contact, ouvrir l’adresse dans Google Maps, ajouter le RDQ à l’agenda. [SFD_RDQ]
+* Entrées attendues :
+o Sélection d’une icône (mail, appel, GPS, agenda)
+o Données de contact ou d’adresse
+* Sorties attendues :
+o Ouverture de l’application correspondante (mail, téléphone, Maps, Outlook)
+o Pré-remplissage des champs (mail, numéro, adresse…)
+* Règles de gestion :
+o Les boutons sont actifs uniquement si les données nécessaires sont renseignées
+o L’adresse doit être valide pour le GPS
+o Le numéro doit être au bon format pour l’appel
+* Interfaces :
+o Icônes sur la fiche RDQ
+o API ou liens profonds vers les applications externes
+* Exceptions / erreurs :
+o Message d’erreur si l’application externe ne s’ouvre pas
+o Erreur si données manquantes ou invalides
+* Critères d’acceptation :
+o Given un utilisateur sur la fiche RDQ
+o When il clique sur une icône de débranchement
+o Then l’application externe s’ouvre avec les données pré-remplies
+o And un message d’erreur s’affiche si l’action échoue
+
+2.4. Gestion des bilans et clôture d’un RDQ
+* Description :
+Permet au manager et au collaborateur de saisir chacun leur bilan (note, commentaire) après le RDQ. La clôture du RDQ n’est possible que si les deux bilans sont saisis. Un RDQ clos devient non modifiable et passe dans l’historique. 
+* Entrées attendues :
+o Note (1 à 10)
+o Commentaire (facultatif)
+* Sorties attendues :
+o Bilan enregistré
+o RDQ clôturé (cadenas affiché)
+o Passage du RDQ dans l’historique
+* Règles de gestion :
+o Les deux bilans (manager et collaborateur) sont obligatoires pour clôturer
+o Un RDQ clos n’est plus modifiable
+o Possibilité de rouvrir un RDQ par le manager
+* Interfaces :
+o Page de bilan
+o Bouton de clôture
+o Affichage historique
+* Exceptions / erreurs :
+o Bulle rouge si bilan manquant
+o Erreur si tentative de clôture sans les deux bilans
+* Critères d’acceptation :
+o Given un RDQ passé
+o When les deux bilans sont saisis
+o Then le manager peut clôturer le RDQ
+o And le RDQ passe dans l’historique et devient non modifiable
+
+
+3. Modèle de données
+3.1. Entités principales
+EntitéDescriptionRDQRendez-vous Qualifié : événement central, préparé par le manager et attribué à un collaborateur.ManagerUtilisateur administrateur, créateur et responsable des RDQ.CollaborateurUtilisateur destinataire des RDQ, chargé de la préparation et du bilan.ClientOrganisation ou personne pour laquelle le RDQ est organisé.ProjetSujet ou contexte du RDQ (ex : appel d’offre, mission, etc.).DocumentPièce jointe liée à un RDQ (CV, fiche de poste, etc.).BilanRetour d’expérience (note, commentaire) saisi par le manager et/ou le collaborateur après le RDQ.
+3.2. Champs par entité (type, contraintes, exemple)
+RDQ
+* idRDQ : entier, clé primaire, auto-incrémenté (ex : 1023)
+* titre : texte, obligatoire (ex : « AO 1233 »)
+* dateHeure : datetime, obligatoire (ex : 2023-10-31 13:00)
+* adresse : texte, optionnel (ex : « 2 rue nationale 75013 PARIS »)
+* mode : enum [physique, visio], obligatoire
+* indicationsManager : texte, optionnel
+* statut : enum [en cours, clos], obligatoire
+* idManager : entier, clé étrangère vers Manager, obligatoire
+* idCollaborateur : entier, clé étrangère vers Collaborateur, obligatoire
+* idClient : entier, clé étrangère vers Client, obligatoire
+* idProjet : entier, clé étrangère vers Projet, optionnel
+Manager
+* idManager : entier, clé primaire
+* nom : texte, obligatoire
+* prenom : texte, obligatoire
+* email : texte, obligatoire, unique
+* telephone : texte, optionnel
+Collaborateur
+* idCollaborateur : entier, clé primaire
+* nom : texte, obligatoire
+* prenom : texte, obligatoire
+* email : texte, obligatoire, unique
+* telephone : texte, optionnel
+Client
+* idClient : entier, clé primaire
+* nom : texte, obligatoire
+* contact : texte, optionnel
+Projet
+* idProjet : entier, clé primaire
+* nom : texte, obligatoire
+Document
+* idDocument : entier, clé primaire
+* nomFichier : texte, obligatoire
+* type : texte, obligatoire (ex : « CV », « fiche de poste »)
+* url : texte, obligatoire
+* idRDQ : entier, clé étrangère vers RDQ, obligatoire
+Bilan
+* idBilan : entier, clé primaire
+* note : entier, obligatoire (1 à 10)
+* commentaire : texte, optionnel
+* auteur : enum [manager, collaborateur], obligatoire
+* idRDQ : entier, clé étrangère vers RDQ, obligatoire
+
+3.3. Relations
+* Manager 1—n RDQ
+Un manager peut créer plusieurs RDQ, chaque RDQ a un seul manager.
+* Collaborateur 1—n RDQ
+Un collaborateur peut avoir plusieurs RDQ, chaque RDQ est attribué à un seul collaborateur.
+* Client 1—n RDQ
+Un client peut être associé à plusieurs RDQ, chaque RDQ a un seul client.
+* Projet 1—n RDQ
+Un projet peut concerner plusieurs RDQ, chaque RDQ peut être lié à un projet (optionnel).
+* RDQ 1—n Document
+Un RDQ peut avoir plusieurs documents joints, chaque document est lié à un seul RDQ.
+* RDQ 1—n Bilan
+Un RDQ peut avoir deux bilans (un manager, un collaborateur), chaque bilan est lié à un seul RDQ.
+
+4. Règles transverses
+4.1. Sécurité
+* Authentification?:
+L’accès à l’application nécessite une authentification avec gestion de deux rôles?:
+o Manager (profil administrateur, accès à la création/modification des RDQ, gestion des bilans, clôture)
+o Collaborateur (profil consultation, accès aux RDQ attribués, saisie de bilan)
+L’authentification doit être forte (idéalement SSO ou MFA si possible).
+* Autorisation?:
+Les droits d’accès sont strictement contrôlés?:
+o Un manager ne peut modifier que les RDQ qu’il a créés.
+o Un collaborateur ne peut consulter et modifier que ses propres RDQ.
+o Les actions sensibles (clôture, réouverture, suppression) sont réservées au manager.
+* Chiffrement?:
+o Les données sensibles (identité, contacts, documents joints) doivent être chiffrées au repos et en transit (TLS 1.2+).
+o Les mots de passe ne doivent jamais être stockés en clair.
+* Traçabilité?:
+o Journalisation des accès, modifications, créations et suppressions de RDQ.
+o Historique des actions critiques (clôture, réouverture, bilan).
+
+4.2. Performance
+* SLA (Service Level Agreement)?:
+o Disponibilité cible?: 99,5?% sur les heures ouvrées.
+o Temps de réponse maximal pour les opérations courantes (création, consultation, modification d’un RDQ)?: < 2 secondes.
+o Temps de synchronisation avec le CRM ou l’agenda Outlook?: < 5 secondes pour l’utilisateur.
+* Scalabilité?:
+o L’application doit supporter la montée en charge (plusieurs centaines d’utilisateurs simultanés).
+o Les opérations de recherche et de filtrage doivent rester performantes même avec un volume important de RDQ.
+
+4.3. Accessibilité / UI
+* Normes à respecter?: 
+o Respect des standards RGAA (Référentiel Général d’Amélioration de l’Accessibilité) niveau AA.
+o Navigation clavier complète, contraste suffisant, textes alternatifs pour les icônes et images.
+o Responsive design?: interface utilisable sur desktop, tablette et mobile.
+o Simplicité d’usage?: écrans épurés, accès rapide aux fonctions clés (création, consultation, débranchement).
+
+4.4. Interopérabilité
+* API?:
+o Exposition d’API REST sécurisées pour?: 
+* Synchronisation avec le CRM (création/modification automatique des RDQ)
+* Intégration avec l’agenda Outlook (création d’événements)
+* Débranchement vers Google Maps, mail, téléphone
+o Documentation OpenAPI/Swagger recommandée.
+o Possibilité d’évolution vers GraphQL si besoin de requêtes complexes côté client.
+* Formats d’échange?:
+o JSON pour les échanges API.
+o Support des formats standards pour les pièces jointes (PDF, DOCX, JPEG, etc.).
+o Respect des conventions d’horodatage (ISO 8601).
+
+5. Contraintes techniques
+5.1. Langage / Framework cible
+* Back-end?:
+o Java (version 17 ou supérieure recommandée pour le support long terme)
+o Framework?: Spring Boot (pour la rapidité de développement, la sécurité, l’intégration REST, la gestion des profils, etc.)
+o ORM?: Hibernate / JPA pour la gestion des accès aux données
+* Front-end?:
+o Angular (version 15+ recommandée)
+o Gestion d’état?: NgRx (optionnel, pour les applications complexes)
+o UI?: Angular Material ou PrimeNG pour des composants accessibles et responsives
+
+5.2. Environnement
+* Déploiement?:
+o Cloud (Azure, AWS, GCP) ou On-premise selon les contraintes de l’entreprise
+o Conteneurisation?: Docker (images pour back et front)
+o Orchestration possible via Kubernetes pour la scalabilité
+* Systèmes d’exploitation?:
+o Compatible Linux (Ubuntu, RedHat…) et Windows Server pour le back-end
+o Front-end accessible depuis tous les OS via navigateur moderne (Chrome, Edge, Firefox…)
+* Base de données?:
+o PostgreSQL, MySQL ou SQL Server (selon standard entreprise)
+
+5.3. Normes / Bonnes pratiques
+* Tests unitaires?:
+o Java?: JUnit 5, Mockito pour le back-end
+o Angular?: Jasmine, Karma pour le front-end
+o Objectif?: couverture de code 100?% sur les couches métier et services critiques
+* CI/CD?:
+o Intégration continue via GitHub Actions, GitLab CI, Azure DevOps ou Jenkins
+o Déploiement automatisé sur les environnements de recette et production
+o Analyse statique du code (SonarQube, ESLint, Checkstyle)
+o Gestion des secrets et variables d’environnement sécurisée
+* Sécurité?:
+o OWASP Top 10?: prévention des failles courantes (XSS, CSRF, injection SQL…)
+o Authentification JWT ou OAuth2 (Spring Security)
+o Chiffrement TLS/SSL pour toutes les communications
+* Documentation?:
+o Swagger/OpenAPI pour les API REST
+o Documentation technique et utilisateur à jour (README, Wiki, Storybook pour les composants Angular)
+
+5.4. Accessibilité / UI
+* Respect des normes d’accessibilité RGAA niveau AA
+* Utilisation de composants Angular Material ou PrimeNG pour garantir l’accessibilité (navigation clavier, contraste, ARIA labels)
+* Responsive design (mobile, tablette, desktop)
+
+Interopérabilité
+* API REST exposées côté Java (Spring Boot)?:
+o Format d’échange?: JSON (UTF-8)
+o Versionnement des API (ex?: /api/v1/…)
+o Gestion des erreurs via codes HTTP standard et messages structurés
+* Connexion avec systèmes tiers?:
+o Intégration possible avec CRM, agenda Outlook, Google Maps via API REST
+o Support des webhooks pour synchronisation d’événements
+
+5.5. Éléments complémentaires pertinents
+* Logs & monitoring?:
+o Centralisation des logs (ELK Stack, Grafana, Prometheus)
+o Alertes en cas d’erreur critique ou de baisse de performance
+* RGPD / conformité?:
+o Droit à l’oubli, export des données personnelles, consentement explicite pour la collecte de données
+* Internationalisation (i18n)?:
+o Support multilingue côté Angular (ngx-translate)
+
+6. Priorisation & lotissement
+6.1. MoSCoW 
+
+Must have (Indispensable)
+* Authentification et gestion des rôles (manager/collaborateur)
+* Création, modification, attribution et consultation des RDQ
+* Ajout et consultation de pièces jointes (CV, fiche de poste…)
+* Débranchement rapide (mail, appel, GPS, agenda)
+* Saisie et gestion des bilans (manager et collaborateur)
+* Clôture et réouverture des RDQ
+* Historique des RDQ et gestion des statuts (en cours, clos)
+* Sécurité des accès et des données (chiffrement, droits)
+* API REST pour synchronisation CRM et agenda Outlook
+* Gestion des erreurs et des cas de non-conformité
+Should have (Important mais non bloquant)
+* Filtres avancés sur la liste des RDQ (par client, collaborateur, statut…)
+* Notifications (mail ou in-app) pour les actions importantes (nouveau RDQ, bilan à saisir…)
+* Responsive design (desktop, mobile, tablette)
+* Export des données (CSV, PDF)
+* Journalisation des actions (audit)
+Could have (Bonus, valeur ajoutée)
+* Intégration avec d’autres outils (Teams, Slack…)
+* Dashboard de suivi des RDQ (statistiques, taux de transformation…)
+* Recherche plein texte sur les RDQ et documents joints
+* Support multilingue (i18n)
+* Assistant virtuel pour la préparation des entretiens
+Won’t have (Hors périmètre pour ce projet)
+* Gestion avancée des droits (profils personnalisés, délégation…)
+* Modification d’un RDQ clos (hors ajout de PJ si besoin technique)
+* Workflow de validation multi-niveaux
+* Archivage automatique des RDQ au-delà d’une certaine date
+
+6.2. Découpage en itérations / sprints
+Voici un exemple de découpage agile sur 4 sprints :
+
+Sprint 1 : Fondations & MVP
+* Authentification, gestion des rôles
+* Création et consultation des RDQ (structure minimale)
+* Ajout de pièces jointes
+* Débranchement mail et agenda
+* Sécurité de base (accès, droits)
+* Mise en place de l’API REST (endpoints principaux)
+* Tests unitaires sur les fonctionnalités critiques
+Sprint 2 : Fonctionnalités cœur
+* Modification, attribution et clôture des RDQ
+* Gestion des bilans (saisie, affichage, règles)
+* Débranchement appel et GPS
+* Historique des RDQ
+* Filtres sur la liste des RDQ
+* Gestion des erreurs métier
+* Responsive design
+Sprint 3 : Améliorations & intégrations
+* Notifications (mail/in-app)
+* Export des données
+* Journalisation des actions
+* Synchronisation avancée avec CRM et agenda Outlook
+* Dashboard simple (statistiques de base)
+* Tests d’intégration
+Sprint 4 : Bonus & stabilisation
+* Recherche plein texte
+* Support multilingue (si besoin)
+* Intégration avec d’autres outils (Teams…)
+* Optimisation des performances
+* Accessibilité (WCAG 2.1 AA)
+* Documentation utilisateur et technique
+* Recette globale et corrections
+
