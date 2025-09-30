@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <!-- Inclusion des changesets selon l'ordre chronologique -->
+    <include file="db/changelog/changes/001-create-users-table.xml"/>
+    <include file="db/changelog/changes/002-create-rdq-table.xml"/>
+    
+    <!-- Données de référence -->
+    <include file="db/changelog/data/001-insert-default-users.xml"/>
+    <include file="db/changelog/data/002-insert-rdq-types.xml"/>
+
+</databaseChangeLog>

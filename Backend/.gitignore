@@ -1,0 +1,29 @@
+# Ignorer les fichiers de build Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Ignorer les fichiers IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Ignorer les logs
+*.log
+
+# Ignorer les fichiers temporaires
+*.tmp
+*.temp
+*~
+
+# Ignorer les fichiers OS
+.DS_Store
+Thumbs.db
+
+# Ignorer les fichiers de configuration locale
+application-local.properties
