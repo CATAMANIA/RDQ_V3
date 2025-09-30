@@ -270,6 +270,552 @@ public class JwtService {
 - **MANAGER** : Manager (gestion d'équipe, approbation RDQ)
 - **ADMIN** : Administrateur (configuration système)
 
+## Sécurité OWASP - Règles obligatoires
+
+### Conformité OWASP Top 10
+Le projet RDQ_V3 doit **OBLIGATOIREMENT** respecter les règles de sécurité OWASP pour Java/Quarkus. Toutes les implémentations suivantes sont **OBLIGATOIRES**.
+
+### 1. A01:2021 - Injection
+
+#### Protection contre l'injection SQL
+```java
+@ApplicationScoped
+public class RdqRepository implements PanacheRepositoryBase<RdqEntity, Long> {
+    
+    // ✅ CORRECT - Requêtes paramétrées
+    public List<RdqEntity> findByUserAndStatus(Long userId, RdqStatus status) {
+        return find("user.id = ?1 and status = ?2", userId, status).list();
+    }
+    
+    // ✅ CORRECT - Named parameters
+    public List<RdqEntity> searchByTitle(String title) {
+        return find("title LIKE :title", Parameters.with("title", "%" + title + "%")).list();
+    }
+    
+    // ❌ INTERDIT - Concaténation directe
+    // public List<RdqEntity> searchUnsafe(String title) {
+    //     return find("title LIKE '" + title + "'").list();
+    // }
+}
+```
+
+#### Validation d'entrée obligatoire
+```java
+@Path("/api/rdq")
+public class RdqResource {
+    
+    @POST
+    public Response createRdq(@Valid CreateRdqDto createDto) {
+        // Validation automatique avec Bean Validation
+        // @Valid est OBLIGATOIRE sur tous les paramètres d'entrée
+    }
+    
+    @GET
+    public Response searchRdq(@QueryParam("search") @Pattern(regexp = "^[a-zA-Z0-9\\s]{1,100}$") String search) {
+        // Validation des paramètres de requête OBLIGATOIRE
+        if (search != null && !search.matches("^[a-zA-Z0-9\\s]{1,100}$")) {
+            throw new ValidationException("Invalid search parameter");
+        }
+    }
+}
+```
+
+### 2. A02:2021 - Échec de l'authentification et de la gestion de session
+
+#### Authentification robuste
+```java
+@ApplicationScoped
+public class AuthService {
+    
+    private static final int MAX_LOGIN_ATTEMPTS = 3;
+    private static final int LOCKOUT_DURATION_MINUTES = 15;
+    
+    @Inject
+    JwtService jwtService;
+    
+    @Inject
+    UserRepository userRepository;
+    
+    // Utilisation de Quarkus Security natif pour le hachage
+    @Inject
+    @Named("default")
+    PasswordProvider passwordProvider;
+    
+    public AuthResponse authenticate(String email, String password) {
+        UserEntity user = userRepository.findByEmail(email);
+        
+        // Vérification des tentatives de connexion
+        if (isAccountLocked(user)) {
+            throw new AccountLockedException("Account temporarily locked");
+        }
+        
+        // Vérification du mot de passe avec Quarkus Security
+        if (!passwordProvider.verify(password, user.passwordHash)) {
+            recordFailedAttempt(user);
+            throw new InvalidCredentialsException("Invalid credentials");
+        }
+        
+        // Reset des tentatives en cas de succès
+        resetFailedAttempts(user);
+        
+        // Génération token sécurisé
+        String token = jwtService.generateToken(user);
+        return new AuthResponse(user, token);
+    }
+    
+    public String hashPassword(String password) {
+        // Hash sécurisé avec Quarkus Security natif
+        return passwordProvider.password(password);
+    }
+    
+    private boolean isAccountLocked(UserEntity user) {
+        // Logique de vérification du verrouillage de compte
+        return false; // À implémenter
+    }
+    
+    private void recordFailedAttempt(UserEntity user) {
+        // Logique d'enregistrement des tentatives échouées
+    }
+    
+    private void resetFailedAttempts(UserEntity user) {
+        // Logique de reset des tentatives
+    }
+}
+```
+
+#### Configuration sécurisée des sessions
+```properties
+# application.properties
+# Configuration JWT sécurisée
+mp.jwt.verify.issuer=rdq-app
+mp.jwt.verify.publickey.location=META-INF/publickey.pem
+quarkus.smallrye-jwt.enabled=true
+
+# Expiration courte des tokens
+mp.jwt.token.expiration=3600
+
+# Configuration HTTPS obligatoire en production
+quarkus.http.ssl-port=8443
+quarkus.http.ssl.certificate.key-store-file=keystore.p12
+quarkus.http.ssl.certificate.key-store-password=${SSL_KEYSTORE_PASSWORD}
+
+# Sécurisation des cookies
+quarkus.http.same-site-cookie=strict
+quarkus.http.secure-cookies=true
+```
+
+### 3. A03:2021 - Injection et exposition de données sensibles
+
+#### Protection des données sensibles
+```java
+@Entity
+@Table(name = "users")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserEntity extends PanacheEntityBase {
+    
+    @Column(nullable = false, unique = true)
+    public String email;
+    
+    // ❌ INTERDIT - Mot de passe en clair
+    // public String password;
+    
+    // ✅ OBLIGATOIRE - Hash du mot de passe
+    @Column(name = "password_hash", nullable = false)
+    @JsonIgnore // Exclure des sérialisations JSON
+    public String passwordHash;
+    
+    // ❌ INTERDIT - Données sensibles loggées
+    @Override
+    public String toString() {
+        return "UserEntity{id=" + id + ", email='" + email + "'}";
+        // Ne jamais inclure passwordHash dans toString()
+    }
+}
+```
+
+#### Configuration de chiffrement
+```properties
+# Variables d'environnement pour données sensibles
+quarkus.datasource.password=${DB_PASSWORD}
+mp.jwt.decrypt.key.location=${JWT_PRIVATE_KEY}
+
+# Chiffrement en base
+quarkus.hibernate-orm.database.charset=UTF-8
+quarkus.hibernate-orm.sql-load-script=no-script.sql
+```
+
+### 4. A04:2021 - Entités externes XML (XXE)
+
+#### Configuration sécurisée XML
+```java
+@ApplicationScoped
+public class XmlProcessor {
+    
+    public Document parseXmlSecurely(InputStream xmlInput) throws ParserConfigurationException {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        
+        // Protection XXE OBLIGATOIRE
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+        factory.setXIncludeAware(false);
+        factory.setExpandEntityReferences(false);
+        
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        return builder.parse(xmlInput);
+    }
+}
+```
+
+### 5. A05:2021 - Contrôle d'accès défaillant
+
+#### Contrôle d'accès basé sur les rôles
+```java
+@Path("/api/admin")
+@RolesAllowed("ADMIN") // Protection au niveau classe
+public class AdminResource {
+    
+    @GET
+    @Path("/users")
+    @RolesAllowed({"ADMIN", "MANAGER"}) // Protection granulaire
+    public Response getUsers(@Context SecurityContext securityContext) {
+        // Vérification supplémentaire si nécessaire
+        String currentUserRole = securityContext.getUserPrincipal().getName();
+        
+        // Double vérification métier
+        if (!hasAdminPrivileges(securityContext)) {
+            throw new ForbiddenException("Insufficient privileges");
+        }
+        
+        return Response.ok(userService.getAllUsers()).build();
+    }
+    
+    @PUT
+    @Path("/users/{id}")
+    public Response updateUser(@PathParam("id") Long userId, 
+                              @Valid UpdateUserDto updateDto,
+                              @Context SecurityContext securityContext) {
+        
+        // Vérification que l'utilisateur ne peut modifier que ses propres données
+        // sauf s'il est admin
+        Long currentUserId = getCurrentUserId(securityContext);
+        String currentUserRole = getCurrentUserRole(securityContext);
+        
+        if (!currentUserRole.equals("ADMIN") && !currentUserId.equals(userId)) {
+            throw new ForbiddenException("Cannot modify other user's data");
+        }
+        
+        return Response.ok(userService.updateUser(userId, updateDto)).build();
+    }
+}
+```
+
+### 6. A06:2021 - Configuration de sécurité défaillante
+
+#### Configuration sécurisée Quarkus
+```properties
+# application-prod.properties - Configuration production sécurisée
+
+# Désactivation du mode dev
+%prod.quarkus.dev-ui.enabled=false
+%prod.quarkus.swagger-ui.enable=false
+
+# Logs sécurisés
+%prod.quarkus.log.level=WARN
+%prod.quarkus.log.category."com.rdq".level=INFO
+%prod.quarkus.log.category."org.hibernate.SQL".level=WARN
+
+# Headers de sécurité
+quarkus.http.header."X-Frame-Options".value=DENY
+quarkus.http.header."X-Content-Type-Options".value=nosniff
+quarkus.http.header."X-XSS-Protection".value=1; mode=block
+quarkus.http.header."Strict-Transport-Security".value=max-age=31536000; includeSubDomains
+
+# CORS restrictif
+quarkus.http.cors.origins=${ALLOWED_ORIGINS}
+quarkus.http.cors.methods=GET,POST,PUT,DELETE
+quarkus.http.cors.headers=accept,authorization,content-type,x-requested-with
+
+# Désactivation d'endpoints sensibles
+quarkus.management.enabled=false
+%prod.quarkus.health.enabled=true
+%prod.quarkus.health.openapi.included=false
+```
+
+### 7. A07:2021 - Cross-Site Scripting (XSS)
+
+#### Protection XSS
+```java
+@ApplicationScoped
+public class XssProtectionFilter {
+    
+    public String sanitizeInput(String input) {
+        if (input == null) return null;
+        
+        // Échappement des caractères dangereux avec Quarkus natif
+        return input.replaceAll("<", "&lt;")
+                   .replaceAll(">", "&gt;")
+                   .replaceAll("\"", "&quot;")
+                   .replaceAll("'", "&#x27;")
+                   .replaceAll("/", "&#x2F;");
+    }
+    
+    // Alternative native avec Bean Validation
+    public boolean isValidInput(String input) {
+        if (input == null) return true;
+        
+        // Pattern de validation natif
+        String safePattern = "^[a-zA-Z0-9\\s\\-_.,!?()]+$";
+        return input.matches(safePattern) && input.length() <= 1000;
+    }
+}
+
+@Path("/api/rdq")
+public class RdqResource {
+    
+    @Inject
+    XssProtectionFilter xssFilter;
+    
+    @POST
+    public Response createRdq(@Valid CreateRdqDto createDto) {
+        // Validation native avec Bean Validation
+        // Assainissement des entrées utilisateur
+        if (!xssFilter.isValidInput(createDto.title)) {
+            throw new ValidationException("Invalid title format");
+        }
+        if (!xssFilter.isValidInput(createDto.description)) {
+            throw new ValidationException("Invalid description format");
+        }
+        
+        return Response.ok(rdqService.createRdq(createDto)).build();
+    }
+}
+```
+
+### 8. A08:2021 - Désérialisation non sécurisée
+
+#### Sérialisation sécurisée
+```java
+@ApplicationScoped
+public class SecureJsonProcessor {
+    
+    @Inject
+    ObjectMapper objectMapper;
+    
+    @PostConstruct
+    public void configureObjectMapper() {
+        // Configuration sécurisée de Jackson avec Quarkus
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
+        objectMapper.configure(JsonParser.Feature.STRICT_DUPLICATE_DETECTION, true);
+        
+        // Désactivation des types polymorphes par défaut
+        objectMapper.configure(MapperFeature.DEFAULT_TYPING, false);
+        
+        // Limitation des types autorisés avec Quarkus
+        objectMapper.setConfig(objectMapper.getDeserializationConfig()
+            .withoutFeatures(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY));
+    }
+    
+    // Alternative: Validation native avec Bean Validation
+    public <T> T deserializeSafely(String json, Class<T> clazz) {
+        try {
+            // Validation native de la taille
+            if (json.length() > 10000) { // 10KB max
+                throw new SecurityException("JSON payload too large");
+            }
+            
+            // Validation du format avec Quarkus natif
+            if (!isValidJsonStructure(json)) {
+                throw new SecurityException("Invalid JSON structure");
+            }
+            
+            return objectMapper.readValue(json, clazz);
+        } catch (JsonProcessingException e) {
+            throw new SecurityException("Invalid JSON format", e);
+        }
+    }
+    
+    private boolean isValidJsonStructure(String json) {
+        // Validation simple native sans dépendance externe
+        return json.trim().startsWith("{") && json.trim().endsWith("}") ||
+               json.trim().startsWith("[") && json.trim().endsWith("]");
+    }
+}
+```
+
+### 9. A09:2021 - Composants avec vulnérabilités connues
+
+#### Gestion des dépendances sécurisées
+```xml
+<!-- pom.xml -->
+<plugins>
+    <!-- Plugin de vérification des vulnérabilités OBLIGATOIRE -->
+    <plugin>
+        <groupId>org.owasp</groupId>
+        <artifactId>dependency-check-maven</artifactId>
+        <version>8.4.0</version>
+        <configuration>
+            <failBuildOnCVSS>7</failBuildOnCVSS>
+            <suppressionFile>owasp-suppressions.xml</suppressionFile>
+        </configuration>
+        <executions>
+            <execution>
+                <goals>
+                    <goal>check</goal>
+                </goals>
+            </execution>
+        </executions>
+    </plugin>
+    
+    <!-- Versions plugin pour maintenir les dépendances à jour -->
+    <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>versions-maven-plugin</artifactId>
+        <version>2.16.0</version>
+    </plugin>
+</plugins>
+```
+
+#### Versions sécurisées obligatoires
+```xml
+<properties>
+    <!-- Versions minimales sécurisées -->
+    <quarkus.version>3.4.3</quarkus.version>
+    <jackson.version>2.15.2</jackson.version>
+    <hibernate.version>6.2.7.Final</hibernate.version>
+    <postgresql.version>42.6.0</postgresql.version>
+</properties>
+```
+
+### 10. A10:2021 - Logs et monitoring insuffisants
+
+#### Logging et monitoring sécurisé
+```java
+@ApplicationScoped
+@Slf4j
+public class SecurityAuditService {
+    
+    @Inject
+    Event<SecurityEvent> securityEventPublisher;
+    
+    public void logSecurityEvent(SecurityEventType type, String userId, String details) {
+        // Log structuré pour analyse automatisée
+        MDC.put("eventType", type.name());
+        MDC.put("userId", userId);
+        MDC.put("timestamp", Instant.now().toString());
+        
+        log.warn("Security Event: type={}, user={}, details={}", type, userId, details);
+        
+        // Publication pour monitoring temps réel
+        securityEventPublisher.fire(new SecurityEvent(type, userId, details));
+        
+        MDC.clear();
+    }
+    
+    public void logAuthenticationAttempt(String email, boolean success, String clientIP) {
+        if (success) {
+            log.info("Authentication success: email={}, ip={}", email, clientIP);
+        } else {
+            log.warn("Authentication failure: email={}, ip={}", email, clientIP);
+            // Alerte si trop de tentatives échouées
+            checkBruteForceAttempts(email, clientIP);
+        }
+    }
+    
+    public void logDataAccess(String userId, String resource, String action) {
+        log.info("Data access: user={}, resource={}, action={}", userId, resource, action);
+    }
+}
+
+@ApplicationScoped
+public class SecurityMetrics {
+    
+    @Inject
+    @Metric(name = "security_events_total")
+    Counter securityEventsCounter;
+    
+    @Inject
+    @Metric(name = "failed_auth_attempts")
+    Counter failedAuthCounter;
+    
+    public void recordSecurityEvent(SecurityEventType type) {
+        securityEventsCounter.increment(Tags.of("type", type.name()));
+    }
+    
+    public void recordFailedAuth(String reason) {
+        failedAuthCounter.increment(Tags.of("reason", reason));
+    }
+}
+```
+
+#### Configuration de monitoring sécurisé
+```properties
+# application.properties
+# Logs de sécurité détaillés
+quarkus.log.category."com.rdq.security".level=INFO
+quarkus.log.category."org.jboss.resteasy.resteasy_jaxrs.i18n".level=WARN
+
+# Métriques de sécurité
+quarkus.micrometer.enabled=true
+quarkus.micrometer.export.prometheus.enabled=true
+
+# Health checks sécurisés (sans exposition de détails sensibles)
+quarkus.health.enabled=true
+quarkus.health.openapi.included=false
+```
+
+### Règles OWASP obligatoires - Résumé
+
+#### Checklist sécurité OWASP (OBLIGATOIRE)
+- [ ] **A01** - Requêtes paramétrées pour toutes les requêtes SQL
+- [ ] **A01** - Validation stricte de toutes les entrées utilisateur
+- [ ] **A02** - Authentification multi-facteurs implémentée
+- [ ] **A02** - Gestion des sessions avec JWT sécurisé
+- [ ] **A03** - Chiffrement des données sensibles en base
+- [ ] **A03** - Pas de données sensibles dans les logs
+- [ ] **A04** - Configuration XML sécurisée contre XXE
+- [ ] **A05** - Contrôle d'accès basé sur les rôles vérifié
+- [ ] **A06** - Configuration production sécurisée
+- [ ] **A06** - Headers de sécurité HTTP configurés
+- [ ] **A07** - Protection XSS sur toutes les entrées
+- [ ] **A08** - Désérialisation sécurisée configurée
+- [ ] **A09** - Scan de vulnérabilités des dépendances
+- [ ] **A10** - Logs de sécurité et monitoring activés
+
+#### Outils de sécurité obligatoires
+```xml
+<!-- Ajout au pom.xml -->
+<dependencies>
+    <!-- Quarkus Security (NATIF - inclut validation et sécurisation) -->
+    <dependency>
+        <groupId>io.quarkus</groupId>
+        <artifactId>quarkus-security</artifactId>
+    </dependency>
+    
+    <!-- Quarkus Hibernate Validator (NATIF - validation Bean Validation) -->
+    <dependency>
+        <groupId>io.quarkus</groupId>
+        <artifactId>quarkus-hibernate-validator</artifactId>
+    </dependency>
+    
+    <!-- Quarkus Elytron Security (NATIF - hachage et authentification) -->
+    <dependency>
+        <groupId>io.quarkus</groupId>
+        <artifactId>quarkus-elytron-security-properties-file</artifactId>
+    </dependency>
+    
+    <!-- Alternative légère si HTML sanitization nécessaire -->
+    <dependency>
+        <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+        <artifactId>owasp-java-html-sanitizer</artifactId>
+        <version>20220608.1</version>
+    </dependency>
+</dependencies>
+```
+
 ## Outils obligatoires
 
 ### Liquibase - Gestion des migrations de base de données
@@ -822,6 +1368,10 @@ Avant chaque commit, vérifier :
 - [ ] **Changeset Liquibase créé si modification de schéma**
 - [ ] **Annotations Lombok utilisées correctement**
 - [ ] **Mappers MapStruct créés pour nouveaux DTOs**
+- [ ] **Checklist sécurité OWASP respectée**
+- [ ] **Scan de vulnérabilités des dépendances OK**
+- [ ] **Validation des entrées implémentée**
+- [ ] **Logs de sécurité ajoutés si nécessaire**
 - [ ] Logs appropriés ajoutés
 - [ ] Gestion d'erreurs implémentée
 - [ ] Validation des entrées en place
