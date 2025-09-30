@@ -101,24 +101,27 @@ public class RdqRepository implements PanacheRepositoryBase<RdqEntity, Long> {
 
 ### Services métier
 
-#### Structure type d'un service
+#### Structure type d'un service avec MapStruct
 ```java
 @ApplicationScoped
 @Transactional
+@RequiredArgsConstructor
+@Slf4j
 public class RdqService {
     
-    @Inject
-    RdqRepository rdqRepository;
-    
-    @Inject
-    NotificationService notificationService;
+    private final RdqRepository rdqRepository;
+    private final UserRepository userRepository;
+    private final RdqMapper rdqMapper; // Injection automatique MapStruct
+    private final NotificationService notificationService;
     
     public RdqDto createRdq(CreateRdqDto createDto, Long userId) {
+        log.debug("Creating RDQ for user {}: {}", userId, createDto.getTitle());
+        
         // 1. Validation métier
         validateRdqCreation(createDto, userId);
         
-        // 2. Transformation DTO -> Entity
-        RdqEntity entity = RdqMapper.toEntity(createDto);
+        // 2. Transformation DTO -> Entity avec MapStruct
+        RdqEntity entity = rdqMapper.toEntity(createDto);
         entity.user = userRepository.findById(userId);
         entity.status = RdqStatus.DRAFT;
         
@@ -128,21 +131,56 @@ public class RdqService {
         // 4. Actions post-création
         notificationService.sendRdqCreatedNotification(entity);
         
-        // 5. Retour DTO
-        return RdqMapper.toDto(entity);
+        // 5. Retour DTO avec MapStruct
+        return rdqMapper.toDto(entity);
+    }
+    
+    public RdqDto updateRdq(Long rdqId, UpdateRdqDto updateDto, Long userId) {
+        RdqEntity entity = rdqRepository.findById(rdqId);
+        if (entity == null) {
+            throw new RdqNotFoundException(rdqId);
+        }
+        
+        // Validation des droits
+        validateUpdatePermissions(entity, userId);
+        
+        // Mise à jour avec MapStruct (ignore les valeurs null)
+        rdqMapper.updateEntityFromDto(updateDto, entity);
+        
+        log.debug("Updated RDQ {}: {}", rdqId, updateDto);
+        return rdqMapper.toDto(entity);
+    }
+    
+    public Page<RdqDto> getUserRdqs(Long userId, RdqStatus status, int page, int size) {
+        Page<RdqEntity> entities = rdqRepository.findByUserAndStatus(userId, status, page, size);
+        
+        // Transformation Page<Entity> -> Page<DTO>
+        return new Page<>(
+            rdqMapper.toDtoList(entities.content),
+            entities.totalElements,
+            entities.totalPages,
+            entities.number,
+            entities.size
+        );
     }
     
     private void validateRdqCreation(CreateRdqDto dto, Long userId) {
         // Validation métier spécifique
+    }
+    
+    private void validateUpdatePermissions(RdqEntity entity, Long userId) {
+        // Validation des permissions
     }
 }
 ```
 
 #### Règles pour les services
 - Annotation `@Transactional` au niveau classe
-- Injection des dépendances avec `@Inject`
+- **Lombok** : `@RequiredArgsConstructor` pour injection par constructeur
+- **Lombok** : `@Slf4j` pour logging automatique
+- **MapStruct** : Injection automatique des mappers via CDI
 - Validation métier dans des méthodes privées
-- Utilisation des mappers pour Entity <-> DTO
+- Utilisation des mappers MapStruct pour Entity <-> DTO
 - Gestion des exceptions métier explicite
 - Logs avec SLF4J pour traçabilité
 
@@ -361,6 +399,104 @@ public class RdqService {
 - `@Slf4j` : Logger automatique
 - `@Value` : Classe immutable (final, getters seulement)
 
+### MapStruct - Mapping automatique Entity ↔ DTO
+
+#### Configuration obligatoire
+MapStruct est **OBLIGATOIRE** pour tous les mappings Entity ↔ DTO afin d'éviter le code boilerplate manuel et garantir des performances optimales.
+
+#### Configuration Maven
+```xml
+<properties>
+    <mapstruct.version>1.5.5.Final</mapstruct.version>
+    <lombok.version>1.18.30</lombok.version>
+</properties>
+
+<dependencies>
+    <!-- MapStruct -->
+    <dependency>
+        <groupId>org.mapstruct</groupId>
+        <artifactId>mapstruct</artifactId>
+        <version>${mapstruct.version}</version>
+    </dependency>
+</dependencies>
+
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.11.0</version>
+            <configuration>
+                <annotationProcessorPaths>
+                    <!-- IMPORTANT: Lombok AVANT MapStruct -->
+                    <path>
+                        <groupId>org.projectlombok</groupId>
+                        <artifactId>lombok</artifactId>
+                        <version>${lombok.version}</version>
+                    </path>
+                    <path>
+                        <groupId>org.mapstruct</groupId>
+                        <artifactId>mapstruct-processor</artifactId>
+                        <version>${mapstruct.version}</version>
+                    </path>
+                </annotationProcessorPaths>
+                <compilerArgs>
+                    <compilerArg>-Amapstruct.defaultComponentModel=cdi</compilerArg>
+                    <compilerArg>-Amapstruct.defaultInjectionStrategy=constructor</compilerArg>
+                </compilerArgs>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+```
+
+#### Exemple de mapper complet
+```java
+@Mapper(
+    componentModel = "cdi",
+    injectionStrategy = InjectionStrategy.CONSTRUCTOR,
+    uses = {UserMapper.class, ClientMapper.class}
+)
+public interface RdqMapper {
+    
+    // Création - ignorer les champs auto-générés
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "status", constant = "DRAFT")
+    RdqEntity toEntity(CreateRdqDto dto);
+    
+    // Lecture - mapping des relations
+    @Mapping(source = "user", target = "userDto")
+    @Mapping(source = "client", target = "clientDto")
+    @Mapping(source = "projet", target = "projetDto")
+    RdqDto toDto(RdqEntity entity);
+    
+    // Liste
+    List<RdqDto> toDtoList(List<RdqEntity> entities);
+    
+    // Mise à jour partielle - ignorer les null
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    void updateEntityFromDto(UpdateRdqDto dto, @MappingTarget RdqEntity entity);
+    
+    // Mappings conditionnels
+    @Mapping(target = "managerComment", 
+             expression = "java(entity.getUser().getRole() == UserRole.MANAGER ? entity.getManagerComment() : null)")
+    RdqSummaryDto toSummaryDto(RdqEntity entity);
+}
+```
+
+#### Règles MapStruct obligatoires
+- **componentModel = "cdi"** : Intégration Quarkus CDI
+- **injectionStrategy = CONSTRUCTOR** : Injection par constructeur (compatible Lombok)
+- **Mapping explicite** des champs critiques (id, timestamps)
+- **@BeanMapping** pour les mises à jour partielles
+- **uses = {}** pour référencer d'autres mappers
+
 ### Configuration par environnement
 
 #### application.properties (base)
@@ -576,7 +712,8 @@ Avant chaque commit, vérifier :
 - [ ] Pas de warnings SonarQube critiques
 - [ ] Documentation JavaDoc à jour
 - [ ] **Changeset Liquibase créé si modification de schéma**
-- [ ] Annotations Lombok utilisées correctement
+- [ ] **Annotations Lombok utilisées correctement**
+- [ ] **Mappers MapStruct créés pour nouveaux DTOs**
 - [ ] Logs appropriés ajoutés
 - [ ] Gestion d'erreurs implémentée
 - [ ] Validation des entrées en place
