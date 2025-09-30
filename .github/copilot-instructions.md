@@ -183,12 +183,29 @@ git push -u origin feature/feature-name
 ## Troubleshooting
 *Add common issues and solutions as they're discovered*
 
+## Specialized Instructions
+
+### Frontend Development
+For React/TypeScript frontend development, refer to:
+- **[Frontend Instructions](frontend-instructions.md)** - Detailed guidelines for React components, TypeScript patterns, state management, forms, routing, styling, and testing
+
+### Backend Development  
+For Java/Quarkus backend development, refer to:
+- **[Backend Instructions](backend-instructions.md)** - Comprehensive guide for Quarkus setup, JPA entities, REST APIs, security, database management, and testing
+
 ## Notes for AI Agents
 - This is a fresh project - help establish good patterns from the start
 - Follow modern best practices for the chosen technology stack
+- **ALWAYS consult the specialized instruction files** for detailed development guidelines
 - Ask for clarification on architectural decisions
 - Maintain consistency with emerging patterns
 - Update these instructions as the project grows
 
+### When to Use Specialized Instructions
+- **Frontend work**: Components, pages, hooks, forms, styling → Use `frontend-instructions.md`
+- **Backend work**: API endpoints, services, entities, database → Use `backend-instructions.md`
+- **Full-stack integration**: Authentication, API contracts → Use both files
+- **General project setup**: Build scripts, CI/CD, documentation → Use this main file
+
 ---
-*Last updated: Initial creation - update as project develops*
+*Last updated: October 2025 - Added specialized instruction files*
