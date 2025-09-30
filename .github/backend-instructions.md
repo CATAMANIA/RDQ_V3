@@ -1,7 +1,7 @@
 # Backend Development Instructions - RDQ_V3
 
 ## Vue d'ensemble
-Le backend RDQ_V3 est développé en Java 21 avec le framework Quarkus. Il expose une API REST pour la gestion des Demandes de Ressources Qualifiées (RDQ) et gère l'authentification, l'autorisation, et l'intégration avec les systèmes externes.
+Le backend RDQ_V3 est développé en Java 21 avec le framework Quarkus et PostgreSQL 16 comme base de données. Il expose une API REST pour la gestion des Demandes de Ressources Qualifiées (RDQ) et gère l'authentification, l'autorisation, et l'intégration avec les systèmes externes.
 
 ## Architecture Backend
 
@@ -501,9 +501,11 @@ public interface RdqMapper {
 
 #### application.properties (base)
 ```properties
-# Database
+# Database PostgreSQL 16
 quarkus.datasource.db-kind=postgresql
+quarkus.datasource.jdbc.driver=org.postgresql.Driver
 quarkus.hibernate-orm.database.generation=none
+quarkus.hibernate-orm.dialect=org.hibernate.dialect.PostgreSQLDialect
 
 # Liquibase (OBLIGATOIRE)
 quarkus.liquibase.migrate-at-start=true
@@ -525,10 +527,16 @@ quarkus.log.category."com.rdq".level=DEBUG
 
 #### application-dev.properties
 ```properties
-# Base de données H2 pour dev
+# Base de données H2 pour dev (ou PostgreSQL local)
 quarkus.datasource.db-kind=h2
 quarkus.datasource.jdbc.url=jdbc:h2:mem:rdq-dev
 quarkus.hibernate-orm.database.generation=drop-and-create
+
+# Alternative: PostgreSQL local pour dev
+# quarkus.datasource.db-kind=postgresql
+# quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/rdq_dev
+# quarkus.datasource.username=rdq_user
+# quarkus.datasource.password=rdq_password
 
 # Logs plus verbeux
 quarkus.log.level=DEBUG
@@ -536,10 +544,13 @@ quarkus.log.level=DEBUG
 
 #### application-prod.properties
 ```properties
-# Production database
+# Production database PostgreSQL 16
+quarkus.datasource.db-kind=postgresql
 quarkus.datasource.jdbc.url=${DATABASE_URL}
 quarkus.datasource.username=${DB_USERNAME}
 quarkus.datasource.password=${DB_PASSWORD}
+quarkus.datasource.max-size=20
+quarkus.datasource.min-size=5
 
 # Security
 quarkus.http.cors.origins=${FRONTEND_URL}
@@ -547,6 +558,103 @@ quarkus.http.cors.origins=${FRONTEND_URL}
 # Logs
 quarkus.log.level=WARN
 quarkus.log.category."com.rdq".level=INFO
+```
+
+## Configuration PostgreSQL 16
+
+### Dépendances Maven
+```xml
+<dependencies>
+    <!-- PostgreSQL Driver -->
+    <dependency>
+        <groupId>io.quarkus</groupId>
+        <artifactId>quarkus-jdbc-postgresql</artifactId>
+    </dependency>
+    
+    <!-- Hibernate ORM avec Panache -->
+    <dependency>
+        <groupId>io.quarkus</groupId>
+        <artifactId>quarkus-hibernate-orm-panache</artifactId>
+    </dependency>
+    
+    <!-- Liquibase pour migrations -->
+    <dependency>
+        <groupId>io.quarkus</groupId>
+        <artifactId>quarkus-liquibase</artifactId>
+    </dependency>
+</dependencies>
+```
+
+### Configuration de la base de données
+```properties
+# Configuration PostgreSQL 16 recommandée
+quarkus.datasource.db-kind=postgresql
+quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/rdq_v3
+quarkus.datasource.username=rdq_user
+quarkus.datasource.password=rdq_password
+
+# Pool de connexions optimisé
+quarkus.datasource.max-size=20
+quarkus.datasource.min-size=5
+quarkus.datasource.acquisition-timeout=30
+quarkus.datasource.leak-detection-interval=30S
+
+# Hibernate avec PostgreSQL
+quarkus.hibernate-orm.dialect=org.hibernate.dialect.PostgreSQLDialect
+quarkus.hibernate-orm.database.generation=none
+quarkus.hibernate-orm.log.sql=false
+quarkus.hibernate-orm.log.bind-parameters=false
+```
+
+### Optimisations PostgreSQL spécifiques
+
+#### Utilisation des types PostgreSQL
+```java
+@Entity
+@Table(name = "rdq")
+public class RdqEntity extends PanacheEntityBase {
+    
+    // UUID natif PostgreSQL
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    public Long id;
+    
+    // JSON/JSONB pour données complexes
+    @Column(columnDefinition = "jsonb")
+    @Convert(converter = JsonConverter.class)
+    public Map<String, Object> metadata;
+    
+    // Array PostgreSQL pour tags
+    @Column(columnDefinition = "text[]")
+    @Convert(converter = StringArrayConverter.class)
+    public List<String> tags;
+    
+    // Recherche full-text
+    @Column(columnDefinition = "tsvector")
+    public String searchVector;
+}
+```
+
+#### Index pour performance
+```sql
+-- Dans les changesets Liquibase
+CREATE INDEX idx_rdq_search ON rdq USING gin(search_vector);
+CREATE INDEX idx_rdq_metadata ON rdq USING gin(metadata);
+CREATE INDEX idx_rdq_user_status ON rdq(user_id, status);
+CREATE INDEX idx_rdq_created_at ON rdq(created_at DESC);
+```
+
+### Variables d'environnement recommandées
+```bash
+# Développement local
+export DATABASE_URL="jdbc:postgresql://localhost:5432/rdq_v3"
+export DB_USERNAME="rdq_user"
+export DB_PASSWORD="rdq_password"
+
+# Production
+export DATABASE_URL="jdbc:postgresql://prod-server:5432/rdq_v3_prod"
+export DB_USERNAME="${SECRET_DB_USER}"
+export DB_PASSWORD="${SECRET_DB_PASSWORD}"
 ```
 
 ## Tests
