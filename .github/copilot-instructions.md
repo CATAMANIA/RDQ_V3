@@ -195,10 +195,19 @@ git push -u origin feature/feature-name
 ### Frontend Development
 For React/TypeScript frontend development, refer to:
 - **[Frontend Instructions](frontend-instructions.md)** - Detailed guidelines for React components, TypeScript patterns, state management, forms, routing, styling, and testing
+- **[React Instructions](react-instructions.md)** - Component architecture, state management, performance optimization, and React best practices
+- **[HTML Instructions](html-instructions.md)** - Semantic HTML, accessibility, responsive design, and clean markup standards
 
 ### Backend Development  
 For Java/Quarkus backend development, refer to:
 - **[Backend Instructions](backend-instructions.md)** - Comprehensive guide for Quarkus setup, JPA entities, REST APIs, security, database management, and testing
+- **[Java Instructions](java-instructions.md)** - Best practices for Java code quality, conventions, testing patterns, and development standards
+
+### API Development
+For API design and documentation, refer to:
+- **[OpenAPI Instructions](openapi-instructions.md)** - Standards for API documentation, versioning, structure, and OpenAPI specifications
+- **[YAML Instructions](yaml-instructions.md)** - Best practices for YAML formatting, linting rules, and configuration files
+- **[Java Instructions](java-instructions.md)** - Best practices for Java code quality, conventions, testing patterns, and development standards
 
 ## Notes for AI Agents
 - This is a fresh project - help establish good patterns from the start
@@ -210,8 +219,13 @@ For Java/Quarkus backend development, refer to:
 
 ### When to Use Specialized Instructions
 - **Frontend work**: Components, pages, hooks, forms, styling → Use `frontend-instructions.md`
+- **React development**: Component architecture, hooks, performance → Use `react-instructions.md`
+- **HTML markup**: Semantic elements, accessibility, responsive → Use `html-instructions.md`
 - **Backend work**: API endpoints, services, entities, database → Use `backend-instructions.md`
-- **Full-stack integration**: Authentication, API contracts → Use both files
+- **Java code quality**: Best practices, conventions, testing → Use `java-instructions.md`
+- **API design**: OpenAPI specifications, REST endpoints → Use `openapi-instructions.md`
+- **Configuration files**: YAML formatting, config management → Use `yaml-instructions.md`
+- **Full-stack integration**: Authentication, API contracts → Use both frontend and backend files
 - **General project setup**: Build scripts, CI/CD, documentation → Use this main file
 
 ---
