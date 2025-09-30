@@ -109,6 +109,13 @@ npm run test:all  # (if configured)
 - **Main Branch**: `main`
 - **Repository**: GitHub-hosted source control
 
+### JIRA Project Management
+- **Serveur**: MCP (Model Context Protocol)
+- **Projet**: "Test MCP"
+- **Epic Métier**: TM-52 - RDQ_V3 - Gestion des RDQ (User Stories fonctionnelles)
+- **Epic Technique**: TM-53 - RDQ_V3 - Infrastructure et Backend (User Stories techniques)
+- **Accès**: Via serveur MCP pour consultation et suivi des tickets
+
 ### Documentation Structure
 - **docs/**: Functional specifications (SFD - Spécifications Fonctionnelles Détaillées)
 - **.prompts/**: History of AI interactions and development actions
