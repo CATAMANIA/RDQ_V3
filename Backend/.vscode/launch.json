@@ -1,0 +1,45 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Quarkus Dev Mode",
+            "request": "launch",
+            "mainClass": "io.quarkus.dev.QuarkusDevMain",
+            "args": [],
+            "vmArgs": "-Dquarkus.http.port=8080 -Dquarkus.log.level=DEBUG",
+            "projectName": "rdq-backend",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "serverReadyAction": {
+                "pattern": "started in \\d+\\.\\d+s",
+                "uriFormat": "http://localhost:8080",
+                "action": "openExternally"
+            }
+        },
+        {
+            "type": "java",
+            "name": "Debug Quarkus Tests",
+            "request": "launch",
+            "mainClass": "io.quarkus.test.junit.QuarkusTestExtension",
+            "args": [],
+            "vmArgs": "-Dquarkus.test.profile=test",
+            "projectName": "rdq-backend",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false
+        },
+        {
+            "type": "java",
+            "name": "RDQ Backend Application",
+            "request": "launch",
+            "mainClass": "com.rdq.Main",
+            "projectName": "rdq-backend",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "vmArgs": "-Dquarkus.profile=dev -Dquarkus.http.port=8080"
+        }
+    ]
+}

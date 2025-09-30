@@ -1,0 +1,13 @@
+# Configuration APT pour Lombok et MapStruct
+eclipse.preferences.version=1
+
+# Activation du traitement des annotations
+org.eclipse.jdt.apt.aptEnabled=true
+org.eclipse.jdt.apt.genSrcDir=target/generated-sources/annotations
+org.eclipse.jdt.apt.genTestSrcDir=target/generated-test-sources/test-annotations
+org.eclipse.jdt.apt.reconcileEnabled=true
+
+# Configuration pour MapStruct
+org.eclipse.jdt.apt.processorOptions/mapstruct.defaultComponentModel=cdi
+org.eclipse.jdt.apt.processorOptions/mapstruct.defaultInjectionStrategy=constructor
+org.eclipse.jdt.apt.processorOptions/mapstruct.unmappedTargetPolicy=IGNORE

@@ -1,0 +1,16 @@
+# Configuration Maven pour IDE
+eclipse.preferences.version=1
+
+# Configuration Maven de base
+org.eclipse.m2e.core.enabledstandardImportStrategies=org.eclipse.m2e.WORKSPACE_RESOLUTION
+
+# Annotation processing avec Maven
+org.eclipse.m2e.apt.mode=jdt_apt
+org.eclipse.m2e.apt.annotation_processing_enabled=true
+
+# Profils Maven par défaut
+org.eclipse.m2e.core.activeProfiles=dev
+
+# Configuration Quarkus dev mode
+org.eclipse.m2e.core.autobuild=true
+org.eclipse.m2e.core.refreshtarget=true

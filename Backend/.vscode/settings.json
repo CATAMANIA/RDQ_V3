@@ -1,0 +1,41 @@
+{
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.configuration.maven.userSettings": "",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-21",
+            "path": "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.4.7-hotspot"
+        }
+    ],
+    "java.project.sourcePaths": [
+        "src/main/java"
+    ],
+    "java.project.outputPath": "target/classes",
+    "java.project.referencedLibraries": {
+        "include": [
+            "target/dependency/*.jar"
+        ],
+        "exclude": [
+            "target/test-classes/**"
+        ]
+    },
+    "java.format.settings.url": ".settings/org.eclipse.jdt.core.prefs",
+    "java.codeGeneration.insertionLocation": "afterCursor",
+    "java.codeGeneration.generateComments": true,
+    "java.saveActions.organizeImports": true,
+    "java.completion.enabled": true,
+    "java.completion.importOrder": [
+        "java",
+        "javax",
+        "jakarta",
+        "org",
+        "com",
+        ""
+    ],
+    "java.sources.organizeImports.threshold": 3,
+    "java.sources.organizeImports.staticThreshold": 3,
+    "redhat.telemetry.enabled": false,
+    "quarkus.tools.debug.enabled": true,
+    "quarkus.tools.starter.showExtensionDescriptions": true
+}

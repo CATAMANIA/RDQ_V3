@@ -5,13 +5,15 @@ target/
 *.war
 *.ear
 
-# Ignorer les fichiers IDE
+# Ignorer certains fichiers IDE mais garder la configuration de base
 .idea/
 *.iml
-.vscode/
-.settings/
-.project
-.classpath
+
+# Garder les configurations IDE essentielles pour le projet
+# .vscode/
+# .settings/
+# .project
+# .classpath
 
 # Ignorer les logs
 *.log
